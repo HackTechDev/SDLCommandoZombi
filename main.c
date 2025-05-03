@@ -22,6 +22,7 @@ typedef struct {
 typedef struct {
     int x, y;
     bool collected;
+    int doorIndex; 
 } Key;
 
 typedef struct {
@@ -90,7 +91,8 @@ bool loadMap(const char* filename) {
                 case 'K':
                     map[y][x] = 0;
                     if (keyCount < MAX_ENTITIES) {
-                        keys[keyCount++] = (Key){ x * TILE_SIZE, y * TILE_SIZE, false };
+                        keys[keyCount] = (Key){ x * TILE_SIZE, y * TILE_SIZE, false, keyCount };
+                        keyCount++;
                     }
                     break;
                 case 'D':
@@ -261,12 +263,22 @@ int main() {
             if (!keys[i].collected &&
                 checkCollision(player.x, player.y, TILE_SIZE, TILE_SIZE,
                                keys[i].x, keys[i].y, TILE_SIZE, TILE_SIZE)) {
+                
                 keys[i].collected = true;
+
                 keysCollected++;
                 SDL_Log("Clé ramassée ! (%d/%d)", keysCollected, keyCount);
 
+
+                int doorToOpen = keys[i].doorIndex;
+        
+                if (doorToOpen >= 0 && doorToOpen < doorCount) {
+                    doors[doorToOpen].open = true;
+                    SDL_Log("Porte %d ouverte par clé %d !", doorToOpen, i);
+                }
             }
         }
+
 
 
         SDL_RenderPresent(renderer);
