@@ -13,6 +13,32 @@ typedef struct {
     SDL_Rect rect;
 } Player;
 
+#define MAX_ENTITIES 64
+
+typedef struct {
+    int x, y;
+} Enemy;
+
+typedef struct {
+    int x, y;
+    bool collected;
+} Key;
+
+typedef struct {
+    int x, y;
+    bool open;
+} Door;
+
+Enemy enemies[MAX_ENTITIES];
+int enemyCount = 0;
+
+Key keys[MAX_ENTITIES];
+int keyCount = 0;
+
+Door doors[MAX_ENTITIES];
+int doorCount = 0;
+
+
 // 0 = sol, 1 = mur
 int map[MAP_HEIGHT][MAP_WIDTH];
 
@@ -50,9 +76,27 @@ bool loadMap(const char* filename) {
                     map[y][x] = 1;
                     break;
                 case 'P':
-                    map[y][x] = 0; // P est une tuile de sol
+                    map[y][x] = 0;
                     playerStartX = x;
                     playerStartY = y;
+                    break;
+                case 'E':
+                    map[y][x] = 0;
+                    if (enemyCount < MAX_ENTITIES) {
+                        enemies[enemyCount++] = (Enemy){ x * TILE_SIZE, y * TILE_SIZE };
+                    }
+                    break;
+                case 'K':
+                    map[y][x] = 0;
+                    if (keyCount < MAX_ENTITIES) {
+                        keys[keyCount++] = (Key){ x * TILE_SIZE, y * TILE_SIZE, false };
+                    }
+                    break;
+                case 'D':
+                    map[y][x] = 0;
+                    if (doorCount < MAX_ENTITIES) {
+                        doors[doorCount++] = (Door){ x * TILE_SIZE, y * TILE_SIZE, false };
+                    }
                     break;
                 default:
                     SDL_Log("Caractère inconnu '%c' à (%d, %d)", line[x], y, x);
@@ -91,6 +135,31 @@ void renderMap(SDL_Renderer* renderer) {
             else
                 SDL_SetRenderDrawColor(renderer, 20, 150, 20, 255); // sol
             SDL_RenderFillRect(renderer, &tileRect);
+        }
+    }
+
+    // Ennemis : rouge
+    for (int i = 0; i < enemyCount; i++) {
+        SDL_Rect r = { enemies[i].x, enemies[i].y, TILE_SIZE, TILE_SIZE };
+        SDL_SetRenderDrawColor(renderer, 200, 0, 0, 255);
+        SDL_RenderFillRect(renderer, &r);
+    }
+
+    // Clés : jaune
+    for (int i = 0; i < keyCount; i++) {
+        if (!keys[i].collected) {
+            SDL_Rect r = { keys[i].x, keys[i].y, TILE_SIZE, TILE_SIZE };
+            SDL_SetRenderDrawColor(renderer, 255, 255, 0, 255);
+            SDL_RenderFillRect(renderer, &r);
+        }
+    }
+
+    // Portes : bleu foncé
+    for (int i = 0; i < doorCount; i++) {
+        if (!doors[i].open) {
+            SDL_Rect r = { doors[i].x, doors[i].y, TILE_SIZE, TILE_SIZE };
+            SDL_SetRenderDrawColor(renderer, 0, 0, 200, 255);
+            SDL_RenderFillRect(renderer, &r);
         }
     }
 }
