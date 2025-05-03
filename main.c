@@ -44,14 +44,28 @@ SDL_Texture* loadTexture(const char* path, SDL_Renderer* renderer) {
     return texture;
 }
 
+
 void handleInput(bool* running, const Uint8* keystate, Player* player) {
     if (keystate[SDL_SCANCODE_ESCAPE]) {
         *running = false;
     }
-    if (keystate[SDL_SCANCODE_UP])    player->y -= PLAYER_SPEED;
-    if (keystate[SDL_SCANCODE_DOWN])  player->y += PLAYER_SPEED;
-    if (keystate[SDL_SCANCODE_LEFT])  player->x -= PLAYER_SPEED;
-    if (keystate[SDL_SCANCODE_RIGHT]) player->x += PLAYER_SPEED;
+
+    int newX = player->x;
+    int newY = player->y;
+
+    if (keystate[SDL_SCANCODE_UP])    newY -= PLAYER_SPEED;
+    if (keystate[SDL_SCANCODE_DOWN])  newY += PLAYER_SPEED;
+    if (keystate[SDL_SCANCODE_LEFT])  newX -= PLAYER_SPEED;
+    if (keystate[SDL_SCANCODE_RIGHT]) newX += PLAYER_SPEED;
+
+    // Collisions avec les bords de l'écran
+    if (newX >= 0 && newX <= SCREEN_WIDTH - player->destRect.w) {
+        player->x = newX;
+    }
+
+    if (newY >= 0 && newY <= SCREEN_HEIGHT - player->destRect.h) {
+        player->y = newY;
+    }
 }
 
 void render(SDL_Renderer* renderer, Player* player) {
