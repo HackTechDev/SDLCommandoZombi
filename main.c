@@ -14,18 +14,44 @@ typedef struct {
 } Player;
 
 // 0 = sol, 1 = mur
-int map[MAP_HEIGHT][MAP_WIDTH] = {
-    {1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1},
-    {1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1},
-    {1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1},
-    {1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1},
-    {1,0,0,0,0,0,0,0,1,1,1,1,1,1,0,0,0,0,0,0,0,0,0,0,1},
-    {1,0,0,0,0,0,0,0,1,0,1,0,0,1,0,0,0,0,0,0,0,0,0,0,1},
-    {1,0,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,1},
-    {1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1},
-    {1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1},
-};
+int map[MAP_HEIGHT][MAP_WIDTH];
 
+bool loadMap(const char* filename) {
+    FILE* file = fopen(filename, "r");
+    if (!file) {
+        SDL_Log("Impossible d'ouvrir %s", filename);
+        return false;
+    }
+
+    char line[MAP_WIDTH + 2]; // +2 pour '\n' et '\0'
+
+for (int y = 0; y < MAP_HEIGHT; y++) {
+    if (!fgets(line, sizeof(line), file)) {
+        SDL_Log("Erreur de lecture ligne %d (fichier trop court ?)", y + 1);
+        fclose(file);
+        return false;
+    }
+
+    if (strlen(line) < MAP_WIDTH) {
+        SDL_Log("Ligne %d trop courte : %zu caractères", y + 1, strlen(line));
+        fclose(file);
+        return false;
+    }
+
+    for (int x = 0; x < MAP_WIDTH; x++) {
+        if (line[x] == '1') {
+            map[y][x] = 1;
+        } else if (line[x] == '0') {
+            map[y][x] = 0;
+        } else {
+            SDL_Log("Caractère invalide '%c' à (%d, %d)", line[x], y, x);
+            map[y][x] = 0;
+        }
+    }
+}
+    fclose(file);
+    return true;
+}
 
 bool isBlockedAt(int x, int y) {
     int tileX = x / TILE_SIZE;
@@ -92,6 +118,11 @@ int main() {
     SDL_Window* window = SDL_CreateWindow("Zelda-Like", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED,
                                           SCREEN_WIDTH, SCREEN_HEIGHT, SDL_WINDOW_SHOWN);
     SDL_Renderer* renderer = SDL_CreateRenderer(window, -1, SDL_RENDERER_ACCELERATED);
+
+if (!loadMap("map.txt")) {
+    SDL_Quit();
+    return 1;
+}
 
     Player player = {TILE_SIZE * 2, TILE_SIZE * 2}; // position initiale
 
