@@ -38,6 +38,7 @@ int keyCount = 0;
 Door doors[MAX_ENTITIES];
 int doorCount = 0;
 
+int keysCollected = 0;
 
 // 0 = sol, 1 = mur
 int map[MAP_HEIGHT][MAP_WIDTH];
@@ -124,6 +125,10 @@ bool isCollision(int x, int y, int size) {
            isBlockedAt(x + size - 1, y) ||
            isBlockedAt(x, y + size - 1) ||
            isBlockedAt(x + size - 1, y + size - 1);
+}
+
+bool checkCollision(int x1, int y1, int w1, int h1, int x2, int y2, int w2, int h2) {
+    return !(x1 + w1 <= x2 || x1 >= x2 + w2 || y1 + h1 <= y2 || y1 >= y2 + h2);
 }
 
 void renderMap(SDL_Renderer* renderer) {
@@ -229,6 +234,18 @@ int main() {
 
         renderMap(renderer);
         renderPlayer(renderer, &player);
+
+        for (int i = 0; i < keyCount; i++) {
+            if (!keys[i].collected &&
+                checkCollision(player.x, player.y, TILE_SIZE, TILE_SIZE,
+                               keys[i].x, keys[i].y, TILE_SIZE, TILE_SIZE)) {
+                keys[i].collected = true;
+                keysCollected++;
+                SDL_Log("Clé ramassée ! (%d/%d)", keysCollected, keyCount);
+
+            }
+        }
+
 
         SDL_RenderPresent(renderer);
         SDL_Delay(16); // ~60 FPS
