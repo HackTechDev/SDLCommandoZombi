@@ -170,33 +170,45 @@ void renderMap(SDL_Renderer* renderer) {
 }
 
 
+void movePlayer(Player* player, int dx, int dy) {
+    int newX = player->x + dx;
+    int newY = player->y + dy;
+
+    for (int i = 0; i < doorCount; i++) {
+        if (!doors[i].open &&
+            checkCollision(newX, newY, TILE_SIZE, TILE_SIZE,
+                           doors[i].x, doors[i].y, TILE_SIZE, TILE_SIZE)) {
+            // Collision avec une porte FERMÉE
+            SDL_Log("Bloqué par une porte fermée !");
+            return; // Ne pas bouger
+        }
+    }
+
+    // Déplacement horizontal
+    if (!isCollision(newX, player->y, TILE_SIZE)) {
+        player->x = newX;
+    }
+
+    // Déplacement vertical
+    if (!isCollision(player->x, newY, TILE_SIZE)) {
+        player->y = newY;
+    }
+}
 
 void handleInput(bool* running, const Uint8* keystate, Player* player) {
     if (keystate[SDL_SCANCODE_ESCAPE])
         *running = false;
 
-    int newX = player->x;
-    int newY = player->y;
+    int dx = 0;
+    int dy = 0;
 
-    if (keystate[SDL_SCANCODE_UP])    {
-        newY -= PLAYER_SPEED;
-    }
-    if (keystate[SDL_SCANCODE_DOWN]) {
-         newY += PLAYER_SPEED;
-    }
-    if (keystate[SDL_SCANCODE_LEFT]) {
-         newX -= PLAYER_SPEED;
-    }
-    if (keystate[SDL_SCANCODE_RIGHT]) {
-        newX += PLAYER_SPEED;
-    }
+    if (keystate[SDL_SCANCODE_UP])    dy -= PLAYER_SPEED;
+    if (keystate[SDL_SCANCODE_DOWN])  dy += PLAYER_SPEED;
+    if (keystate[SDL_SCANCODE_LEFT])  dx -= PLAYER_SPEED;
+    if (keystate[SDL_SCANCODE_RIGHT]) dx += PLAYER_SPEED;
 
     
-    if (!isCollision(newX, player->y, TILE_SIZE))
-        player->x = newX;
-
-    if (!isCollision(player->x, newY, TILE_SIZE))
-        player->y = newY;
+    movePlayer(player, dx, dy);
 }
 
 void renderPlayer(SDL_Renderer* renderer, Player* player) {
