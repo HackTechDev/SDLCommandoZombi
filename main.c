@@ -154,7 +154,7 @@ void renderMap(SDL_Renderer* renderer) {
     for (int i = 0; i < keyCount; i++) {
         if (!keys[i].collected) {
             SDL_Rect r = { keys[i].x, keys[i].y, TILE_SIZE, TILE_SIZE };
-            SDL_SetRenderDrawColor(renderer, 255, 255, 0, 255);
+            SDL_SetRenderDrawColor(renderer, 128, 128, 0, 255);
             SDL_RenderFillRect(renderer, &r);
         }
     }
