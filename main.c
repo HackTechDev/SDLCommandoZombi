@@ -170,6 +170,7 @@ void renderMap(SDL_Renderer* renderer) {
 }
 
 
+
 void handleInput(bool* running, const Uint8* keystate, Player* player) {
     if (keystate[SDL_SCANCODE_ESCAPE])
         *running = false;
@@ -177,11 +178,20 @@ void handleInput(bool* running, const Uint8* keystate, Player* player) {
     int newX = player->x;
     int newY = player->y;
 
-    if (keystate[SDL_SCANCODE_UP])    newY -= PLAYER_SPEED;
-    if (keystate[SDL_SCANCODE_DOWN])  newY += PLAYER_SPEED;
-    if (keystate[SDL_SCANCODE_LEFT])  newX -= PLAYER_SPEED;
-    if (keystate[SDL_SCANCODE_RIGHT]) newX += PLAYER_SPEED;
+    if (keystate[SDL_SCANCODE_UP])    {
+        newY -= PLAYER_SPEED;
+    }
+    if (keystate[SDL_SCANCODE_DOWN]) {
+         newY += PLAYER_SPEED;
+    }
+    if (keystate[SDL_SCANCODE_LEFT]) {
+         newX -= PLAYER_SPEED;
+    }
+    if (keystate[SDL_SCANCODE_RIGHT]) {
+        newX += PLAYER_SPEED;
+    }
 
+    
     if (!isCollision(newX, player->y, TILE_SIZE))
         player->x = newX;
 
