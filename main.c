@@ -2,53 +2,65 @@
 #include <stdbool.h>
 
 #define SCREEN_WIDTH 800
-#define SCREEN_HEIGHT 600
+#define SCREEN_HEIGHT 576
+#define TILE_SIZE 32
+#define MAP_WIDTH (SCREEN_WIDTH / TILE_SIZE)
+#define MAP_HEIGHT (SCREEN_HEIGHT / TILE_SIZE)
 #define PLAYER_SPEED 4
 
 typedef struct {
     int x, y;
-    SDL_Texture* texture;
-    SDL_Rect srcRect, destRect;
+    SDL_Rect rect;
 } Player;
 
-bool init(SDL_Window** window, SDL_Renderer** renderer) {
-    if (SDL_Init(SDL_INIT_VIDEO) < 0) {
-        SDL_Log("SDL_Init Error: %s", SDL_GetError());
-        return false;
-    }
+// 0 = sol, 1 = mur
+int map[MAP_HEIGHT][MAP_WIDTH] = {
+    {1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1},
+    {1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1},
+    {1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1},
+    {1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1},
+    {1,0,0,0,0,0,0,0,1,1,1,1,1,1,0,0,0,0,0,0,0,0,0,0,1},
+    {1,0,0,0,0,0,0,0,1,0,1,0,0,1,0,0,0,0,0,0,0,0,0,0,1},
+    {1,0,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,1},
+    {1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1},
+    {1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1},
+};
 
-    *window = SDL_CreateWindow("Zelda-Like", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED,
-                               SCREEN_WIDTH, SCREEN_HEIGHT, SDL_WINDOW_SHOWN);
-    if (!*window) {
-        SDL_Log("SDL_CreateWindow Error: %s", SDL_GetError());
-        return false;
-    }
 
-    *renderer = SDL_CreateRenderer(*window, -1, SDL_RENDERER_ACCELERATED);
-    if (!*renderer) {
-        SDL_Log("SDL_CreateRenderer Error: %s", SDL_GetError());
-        return false;
-    }
+bool isBlockedAt(int x, int y) {
+    int tileX = x / TILE_SIZE;
+    int tileY = y / TILE_SIZE;
 
-    return true;
+    if (tileX < 0 || tileX >= MAP_WIDTH || tileY < 0 || tileY >= MAP_HEIGHT)
+        return true;
+
+    return map[tileY][tileX] == 1;
 }
 
-SDL_Texture* loadTexture(const char* path, SDL_Renderer* renderer) {
-    SDL_Surface* surface = SDL_LoadBMP(path);
-    if (!surface) {
-        SDL_Log("SDL_LoadBMP Error: %s", SDL_GetError());
-        return NULL;
+bool isCollision(int x, int y, int size) {
+    return isBlockedAt(x, y) ||
+           isBlockedAt(x + size - 1, y) ||
+           isBlockedAt(x, y + size - 1) ||
+           isBlockedAt(x + size - 1, y + size - 1);
+}
+
+void renderMap(SDL_Renderer* renderer) {
+    for (int y = 0; y < MAP_HEIGHT; y++) {
+        for (int x = 0; x < MAP_WIDTH; x++) {
+            SDL_Rect tileRect = {x * TILE_SIZE, y * TILE_SIZE, TILE_SIZE, TILE_SIZE};
+            if (map[y][x] == 1)
+                SDL_SetRenderDrawColor(renderer, 80, 80, 80, 255); // mur
+            else
+                SDL_SetRenderDrawColor(renderer, 20, 150, 20, 255); // sol
+            SDL_RenderFillRect(renderer, &tileRect);
+        }
     }
-    SDL_Texture* texture = SDL_CreateTextureFromSurface(renderer, surface);
-    SDL_FreeSurface(surface);
-    return texture;
 }
 
 
 void handleInput(bool* running, const Uint8* keystate, Player* player) {
-    if (keystate[SDL_SCANCODE_ESCAPE]) {
+    if (keystate[SDL_SCANCODE_ESCAPE])
         *running = false;
-    }
 
     int newX = player->x;
     int newY = player->y;
@@ -58,54 +70,51 @@ void handleInput(bool* running, const Uint8* keystate, Player* player) {
     if (keystate[SDL_SCANCODE_LEFT])  newX -= PLAYER_SPEED;
     if (keystate[SDL_SCANCODE_RIGHT]) newX += PLAYER_SPEED;
 
-    // Collisions avec les bords de l'écran
-    if (newX >= 0 && newX <= SCREEN_WIDTH - player->destRect.w) {
+    if (!isCollision(newX, player->y, TILE_SIZE))
         player->x = newX;
-    }
 
-    if (newY >= 0 && newY <= SCREEN_HEIGHT - player->destRect.h) {
+    if (!isCollision(player->x, newY, TILE_SIZE))
         player->y = newY;
-    }
 }
 
-void render(SDL_Renderer* renderer, Player* player) {
-    SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
-    SDL_RenderClear(renderer);
+void renderPlayer(SDL_Renderer* renderer, Player* player) {
+    player->rect.x = player->x;
+    player->rect.y = player->y;
+    player->rect.w = TILE_SIZE;
+    player->rect.h = TILE_SIZE;
 
-    player->destRect.x = player->x;
-    player->destRect.y = player->y;
-
-    SDL_RenderCopy(renderer, player->texture, &player->srcRect, &player->destRect);
-
-    SDL_RenderPresent(renderer);
+    SDL_SetRenderDrawColor(renderer, 255, 255, 0, 255); // joueur jaune
+    SDL_RenderFillRect(renderer, &player->rect);
 }
 
 int main() {
-    SDL_Window* window = NULL;
-    SDL_Renderer* renderer = NULL;
+    SDL_Init(SDL_INIT_VIDEO);
+    SDL_Window* window = SDL_CreateWindow("Zelda-Like", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED,
+                                          SCREEN_WIDTH, SCREEN_HEIGHT, SDL_WINDOW_SHOWN);
+    SDL_Renderer* renderer = SDL_CreateRenderer(window, -1, SDL_RENDERER_ACCELERATED);
 
-    if (!init(&window, &renderer)) return 1;
-
-    Player player = {100, 100};
-    player.texture = loadTexture("assets/player.bmp", renderer);
-    player.srcRect = (SDL_Rect){0, 0, 32, 32};
-    player.destRect = (SDL_Rect){player.x, player.y, 32, 32};
+    Player player = {TILE_SIZE * 2, TILE_SIZE * 2}; // position initiale
 
     bool running = true;
     SDL_Event event;
 
     while (running) {
-        while (SDL_PollEvent(&event)) {
+        while (SDL_PollEvent(&event))
             if (event.type == SDL_QUIT) running = false;
-        }
 
         const Uint8* keystate = SDL_GetKeyboardState(NULL);
         handleInput(&running, keystate, &player);
-        render(renderer, &player);
+
+        SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
+        SDL_RenderClear(renderer);
+
+        renderMap(renderer);
+        renderPlayer(renderer, &player);
+
+        SDL_RenderPresent(renderer);
         SDL_Delay(16); // ~60 FPS
     }
 
-    SDL_DestroyTexture(player.texture);
     SDL_DestroyRenderer(renderer);
     SDL_DestroyWindow(window);
     SDL_Quit();
