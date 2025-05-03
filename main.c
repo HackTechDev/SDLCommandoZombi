@@ -16,6 +16,9 @@ typedef struct {
 // 0 = sol, 1 = mur
 int map[MAP_HEIGHT][MAP_WIDTH];
 
+int playerStartX = -1;
+int playerStartY = -1;
+
 bool loadMap(const char* filename) {
     FILE* file = fopen(filename, "r");
     if (!file) {
@@ -25,30 +28,39 @@ bool loadMap(const char* filename) {
 
     char line[MAP_WIDTH + 2]; // +2 pour '\n' et '\0'
 
-for (int y = 0; y < MAP_HEIGHT; y++) {
-    if (!fgets(line, sizeof(line), file)) {
-        SDL_Log("Erreur de lecture ligne %d (fichier trop court ?)", y + 1);
-        fclose(file);
-        return false;
-    }
+    for (int y = 0; y < MAP_HEIGHT; y++) {
+        if (!fgets(line, sizeof(line), file)) {
+            SDL_Log("Erreur de lecture ligne %d (fichier trop court ?)", y + 1);
+            fclose(file);
+            return false;
+        }
 
-    if (strlen(line) < MAP_WIDTH) {
-        SDL_Log("Ligne %d trop courte : %zu caractères", y + 1, strlen(line));
-        fclose(file);
-        return false;
-    }
+        if (strlen(line) < MAP_WIDTH) {
+            SDL_Log("Ligne %d trop courte : %zu caractères", y + 1, strlen(line));
+            fclose(file);
+            return false;
+        }
 
-    for (int x = 0; x < MAP_WIDTH; x++) {
-        if (line[x] == '1') {
-            map[y][x] = 1;
-        } else if (line[x] == '0') {
-            map[y][x] = 0;
-        } else {
-            SDL_Log("Caractère invalide '%c' à (%d, %d)", line[x], y, x);
-            map[y][x] = 0;
+        for (int x = 0; x < MAP_WIDTH; x++) {
+            switch (line[x]) {
+                case '0':
+                    map[y][x] = 0;
+                    break;
+                case '1':
+                    map[y][x] = 1;
+                    break;
+                case 'P':
+                    map[y][x] = 0; // P est une tuile de sol
+                    playerStartX = x;
+                    playerStartY = y;
+                    break;
+                default:
+                    SDL_Log("Caractère inconnu '%c' à (%d, %d)", line[x], y, x);
+                    map[y][x] = 0;
+                    break;
+            }
         }
     }
-}
     fclose(file);
     return true;
 }
@@ -119,12 +131,19 @@ int main() {
                                           SCREEN_WIDTH, SCREEN_HEIGHT, SDL_WINDOW_SHOWN);
     SDL_Renderer* renderer = SDL_CreateRenderer(window, -1, SDL_RENDERER_ACCELERATED);
 
-if (!loadMap("map.txt")) {
-    SDL_Quit();
-    return 1;
-}
+    if (!loadMap("map.txt")) {
+        SDL_Quit();
+        return 1;
+    }
 
-    Player player = {TILE_SIZE * 2, TILE_SIZE * 2}; // position initiale
+    Player player;
+    if (playerStartX == -1 || playerStartY == -1) {
+        SDL_Log("Position du joueur non définie dans la carte !");
+        SDL_Quit();
+        return 1;
+    }
+    player.x = playerStartX * TILE_SIZE;
+    player.y = playerStartY * TILE_SIZE;
 
     bool running = true;
     SDL_Event event;
