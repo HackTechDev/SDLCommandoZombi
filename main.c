@@ -432,24 +432,6 @@ void movePlayer(Player* player, int dx, int dy) {
 
 
 
-    for (int i = 0; i < switchCount; i++) {
-        switches[i].triggered = false;
-    
-        for (int j = 0; j < boxCount; j++) {
-            SDL_Log("i: %d, j: %d, %s", i, j, (boxes[j].active ? "true" : "false"));
-            SDL_Log("box: %d, %d, %d / switch: %d, %d, %d", j, boxes[j].x, boxes[j].y, i, switches[i].x, switches[i].y);
-            if (boxes[j].active && checkCollision(boxes[j].x, boxes[j].y, TILE_SIZE, TILE_SIZE, switches[i].x, switches[i].y, TILE_SIZE, TILE_SIZE)) {
-                SDL_Log("switch triggered");
-                switches[i].triggered = true;
-    
-                // Si lié à une porte, l'ouvrir
-                if (switches[i].linkedDoor >= 0 && switches[i].linkedDoor < doorCount) {
-                    doors[switches[i].linkedDoor].open = true;
-                }
-            }
-        }
-    }
-
 
 
 }
@@ -534,6 +516,31 @@ void renderMenu(SDL_Renderer* renderer, TTF_Font* font) {
 }
 
 
+void activateSwitch(Player* player) {
+    SDL_Log("Activate Swich");
+
+
+    for (int i = 0; i < switchCount; i++) {
+        switches[i].triggered = false;
+    
+        for (int j = 0; j < boxCount; j++) {
+            SDL_Log("i: %d, j: %d, %s", i, j, (boxes[j].active ? "true" : "false"));
+            SDL_Log("box: %d, %d, %d / switch: %d, %d, %d", j, boxes[j].x, boxes[j].y, i, switches[i].x, switches[i].y);
+            if (boxes[j].active && checkCollision(boxes[j].x, boxes[j].y, TILE_SIZE, TILE_SIZE, switches[i].x, switches[i].y, TILE_SIZE, TILE_SIZE)) {
+                SDL_Log("switch triggered");
+                switches[i].triggered = true;
+    
+                // Si lié à une porte, l'ouvrir
+                if (switches[i].linkedDoor >= 0 && switches[i].linkedDoor < doorCount) {
+                    doors[switches[i].linkedDoor].open = true;
+                }
+            }
+        }
+    }
+
+    
+}
+
 int main() {
     SDL_Init(SDL_INIT_VIDEO);
     SDL_Window* window = SDL_CreateWindow("SDLCommandoZombi", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED,
@@ -602,6 +609,8 @@ int main() {
                 if (event.type == SDL_KEYDOWN && !event.key.repeat) {
                     if (event.key.keysym.sym == SDLK_ESCAPE) {
                         gameState = STATE_MENU;  // Retour au menu au lieu de quitter
+                    } else if (event.key.keysym.sym == SDLK_a) {
+                        activateSwitch(&player);
                     } else {
                         handleKeyPress(&event.key, &player, &running);
                     }
