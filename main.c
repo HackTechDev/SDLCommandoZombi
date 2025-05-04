@@ -2,6 +2,23 @@
 #include <stdbool.h>
 #include <SDL2/SDL_image.h>
 
+bool loadMap(const char* filename);
+
+#define WORLD_WIDTH  3
+#define WORLD_HEIGHT 3
+
+typedef struct MapInfo {
+    char* filename;
+    bool exists;
+} MapInfo;
+
+MapInfo world[WORLD_HEIGHT][WORLD_WIDTH];
+
+
+
+int currentMapX = 1;
+int currentMapY = 1;
+
 #define SCREEN_WIDTH 800
 #define SCREEN_HEIGHT 576
 #define TILE_SIZE 32
@@ -63,6 +80,23 @@ int map[MAP_HEIGHT][MAP_WIDTH];
 
 int playerStartX = -1;
 int playerStartY = -1;
+
+
+void loadMapFromWorld(int x, int y) {
+    if (x < 0 || x >= WORLD_WIDTH || y < 0 || y >= WORLD_HEIGHT)
+        return;
+
+    if (!world[y][x].exists)
+        return;
+
+    currentMapX = x;
+    currentMapY = y;
+
+    loadMap(world[y][x].filename);
+    SDL_Log("filename: %s", world[y][x].filename);   
+    
+}
+
 
 bool loadMap(const char* filename) {
     FILE* file = fopen(filename, "r");
@@ -212,6 +246,53 @@ void movePlayer(Player* player, int dx, int dy) {
     else if (dx > 0) player->dir = DIR_RIGHT;
 
 
+    // Transition droite
+    if (newX + TILE_SIZE > MAP_WIDTH * TILE_SIZE) {
+        if (currentMapX + 1 < WORLD_WIDTH && world[currentMapY][currentMapX + 1].exists) {
+            loadMapFromWorld(currentMapX + 1, currentMapY);
+            player->x = 0;
+            return;
+        } else {
+            newX = MAP_WIDTH * TILE_SIZE - TILE_SIZE; // blocage
+        }
+    }
+
+    // Transition gauche
+    if (newX < 0) {
+        if (currentMapX - 1 >= 0 && world[currentMapY][currentMapX - 1].exists) {
+            loadMapFromWorld(currentMapX - 1, currentMapY);
+            player->x = (MAP_WIDTH - 1) * TILE_SIZE;
+            return;
+        } else {
+            newX = 0;
+        }
+    }
+
+    // Transition haut
+    if (newY < 0) {
+        if (currentMapY - 1 >= 0 && world[currentMapY - 1][currentMapX].exists) {
+            loadMapFromWorld(currentMapX, currentMapY - 1);
+            player->y = (MAP_HEIGHT - 1) * TILE_SIZE;
+            return;
+        } else {
+            newY = 0;
+        }
+    }
+
+    // Transition bas
+    if (newY + TILE_SIZE > MAP_HEIGHT * TILE_SIZE) {
+        if (currentMapY + 1 < WORLD_HEIGHT && world[currentMapY + 1][currentMapX].exists) {
+            loadMapFromWorld(currentMapX, currentMapY + 1);
+            player->y = 0;
+            return;
+        } else {
+            newY = MAP_HEIGHT * TILE_SIZE - TILE_SIZE;
+        }
+    }
+
+
+
+
     // Déplacement horizontal
     if (!isCollision(newX, player->y, TILE_SIZE)) {
         player->x = newX;
@@ -276,8 +357,19 @@ void renderPlayer(SDL_Renderer* renderer, Player* player) {
         FRAME_HEIGHT
     };
 
-    printf("Render frame %d at src.x=%d src.y=%d\n", player->frame, src.x, src.y);
+    //printf("Render frame %d at src.x=%d src.y=%d\n", player->frame, src.x, src.y);
+    
     SDL_RenderCopy(renderer, player->texture, &src, &dst);
+}
+
+void initWorld() {
+    memset(world, 0, sizeof(world));
+
+    world[1][1] = (MapInfo){ "map_1_1.txt", true };
+    world[1][0] = (MapInfo){ "map_1_0.txt", true };
+    world[1][2] = (MapInfo){ "map_1_2.txt", true };
+    world[0][1] = (MapInfo){ "map_0_1.txt", true };
+    world[2][1] = (MapInfo){ "map_2_1.txt", true };
 }
 
 int main() {
@@ -286,13 +378,11 @@ int main() {
                                           SCREEN_WIDTH, SCREEN_HEIGHT, SDL_WINDOW_SHOWN);
     SDL_Renderer* renderer = SDL_CreateRenderer(window, -1, SDL_RENDERER_ACCELERATED);
 
-    if (!loadMap("map.txt")) {
-        SDL_Quit();
-        return 1;
-    }
 
 
+    initWorld();
 
+    loadMapFromWorld(currentMapX, currentMapY);
 
     Player player;
 
