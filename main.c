@@ -114,6 +114,9 @@ int switchCount = 0;
 
 SDL_Texture* boxTexture = NULL;
 SDL_Texture* wallTexture = NULL;
+SDL_Texture* groundTexture = NULL;
+SDL_Texture* switchTexture = NULL;
+SDL_Texture* doorTexture = NULL;
 
 void loadMapFromWorld(int x, int y) {
     if (x < 0 || x >= WORLD_WIDTH || y < 0 || y >= WORLD_HEIGHT)
@@ -269,16 +272,59 @@ void renderWalls(SDL_Renderer* renderer) {
                 } else {
                     SDL_SetRenderDrawColor(renderer, 100, 100, 100, 255);
                     SDL_RenderFillRect(renderer, &tileRect);
-                }
-                    
-    
+                }                
             } else {
-                SDL_SetRenderDrawColor(renderer, 20, 150, 20, 255); // sol
-                SDL_RenderFillRect(renderer, &tileRect);
+                if (groundTexture) {
+                    SDL_RenderCopy(renderer, groundTexture, NULL, &tileRect);
+                } else {
+                    SDL_SetRenderDrawColor(renderer, 20, 150, 20, 255); // sol
+                    SDL_RenderFillRect(renderer, &tileRect);
+                }
+
             }
         }
     }
 }
+
+
+void renderDoors(SDL_Renderer* renderer) {
+    for (int i = 0; i < doorCount; i++) {
+        if (!doors[i].open) {
+           SDL_Rect r = { doors[i].x, doors[i].y, TILE_SIZE, TILE_SIZE };
+            if (boxTexture) {
+                SDL_RenderCopy(renderer, doorTexture, NULL, &r);
+            } else {
+               SDL_SetRenderDrawColor(renderer, 0, 0, 200, 255);
+               SDL_RenderFillRect(renderer, &r);
+            }
+
+        }
+    }
+}
+
+
+void  renderSwitchs(SDL_Renderer* renderer) {
+
+ for (int i = 0; i < switchCount; i++) {
+        if (switches[i].active) {
+            SDL_Rect rect = { switches[i].x, switches[i].y, TILE_SIZE, TILE_SIZE };
+            if (switches[i].triggered) {
+                SDL_SetRenderDrawColor(renderer, 0, 255, 0, 255); // vert = activé
+                SDL_RenderFillRect(renderer, &rect);
+            } else {
+
+                if (boxTexture) {
+                    SDL_RenderCopy(renderer, switchTexture, NULL, &rect);
+                } else {
+                    SDL_SetRenderDrawColor(renderer, 255, 0, 0, 255); // rouge = inactif
+                }
+            }
+            
+        }
+    }
+
+}
+
 
 void renderMap(SDL_Renderer* renderer) {
     
@@ -301,28 +347,12 @@ void renderMap(SDL_Renderer* renderer) {
         }
     }
 
-    // Portes : bleu foncé
-    for (int i = 0; i < doorCount; i++) {
-        if (!doors[i].open) {
-            SDL_Rect r = { doors[i].x, doors[i].y, TILE_SIZE, TILE_SIZE };
-            SDL_SetRenderDrawColor(renderer, 0, 0, 200, 255);
-            SDL_RenderFillRect(renderer, &r);
-        }
-    }
 
+    renderDoors(renderer);
 
     renderBoxes(renderer);
 
-    for (int i = 0; i < switchCount; i++) {
-        if (switches[i].active) {
-            SDL_Rect rect = { switches[i].x, switches[i].y, TILE_SIZE, TILE_SIZE };
-            if (switches[i].triggered)
-                SDL_SetRenderDrawColor(renderer, 0, 255, 0, 255); // vert = activé
-            else
-                SDL_SetRenderDrawColor(renderer, 255, 0, 0, 255); // rouge = inactif
-            SDL_RenderFillRect(renderer, &rect);
-        }
-    }
+   renderSwitchs(renderer);
     
 }
 
@@ -431,9 +461,6 @@ void movePlayer(Player* player, int dx, int dy) {
         }
     }
 
-
-
-
     // Déplacement horizontal
     if (!isCollision(newX, player->y, TILE_SIZE)) {
         player->x = newX;
@@ -454,11 +481,6 @@ void movePlayer(Player* player, int dx, int dy) {
     } else {
         player->frame = 0; // frame fixe si inactif
     }
-
-
-
-
-
 }
 
 void handleKeyPress(SDL_KeyboardEvent* key, Player* player, bool* running) {
@@ -592,6 +614,30 @@ int main() {
         SDL_Log("Erreur chargement wall.png : %s", IMG_GetError());
     } else {
         wallTexture = SDL_CreateTextureFromSurface(renderer, tempSurface);
+        SDL_FreeSurface(tempSurface);
+    }
+
+    tempSurface = IMG_Load("assets/ground.png");
+    if (!tempSurface) {
+        SDL_Log("Erreur chargement ground.png : %s", IMG_GetError());
+    } else {
+        groundTexture = SDL_CreateTextureFromSurface(renderer, tempSurface);
+        SDL_FreeSurface(tempSurface);
+    }
+
+    tempSurface = IMG_Load("assets/door.png");
+    if (!tempSurface) {
+        SDL_Log("Erreur chargement door.png : %s", IMG_GetError());
+    } else {
+        doorTexture = SDL_CreateTextureFromSurface(renderer, tempSurface);
+        SDL_FreeSurface(tempSurface);
+    }
+
+    tempSurface = IMG_Load("assets/switch.png");
+    if (!tempSurface) {
+        SDL_Log("Erreur chargement switch.png : %s", IMG_GetError());
+    } else {
+        switchTexture = SDL_CreateTextureFromSurface(renderer, tempSurface);
         SDL_FreeSurface(tempSurface);
     }
 
