@@ -112,6 +112,8 @@ typedef struct {
 Switch switches[MAX_SWITCHES];
 int switchCount = 0;
 
+SDL_Texture* boxTexture = NULL;
+SDL_Texture* wallTexture = NULL;
 
 void loadMapFromWorld(int x, int y) {
     if (x < 0 || x >= WORLD_WIDTH || y < 0 || y >= WORLD_HEIGHT)
@@ -242,15 +244,42 @@ bool checkCollision(int x1, int y1, int w1, int h1, int x2, int y2, int w2, int 
     return !(x1 + w1 <= x2 || x1 >= x2 + w2 || y1 + h1 <= y2 || y1 >= y2 + h2);
 }
 
+void renderBoxes(SDL_Renderer* renderer) {
+    for (int i = 0; i < boxCount; i++) {
+        if (boxes[i].active) {
+            SDL_Rect dest = { boxes[i].x, boxes[i].y, TILE_SIZE, TILE_SIZE };
+            if (boxTexture)
+                SDL_RenderCopy(renderer, boxTexture, NULL, &dest);
+            else {
+                SDL_SetRenderDrawColor(renderer, 150, 100, 50, 255);
+                SDL_RenderFillRect(renderer, &dest);
+            }
+        }
+    }
+}
+
 void renderMap(SDL_Renderer* renderer) {
     for (int y = 0; y < MAP_HEIGHT; y++) {
         for (int x = 0; x < MAP_WIDTH; x++) {
+            
+            
             SDL_Rect tileRect = {x * TILE_SIZE, y * TILE_SIZE, TILE_SIZE, TILE_SIZE};
-            if (map[y][x] == 1)
-                SDL_SetRenderDrawColor(renderer, 80, 80, 80, 255); // mur
-            else
+            
+            if (map[y][x] == 1) {
+                if (wallTexture) {
+                    SDL_RenderCopy(renderer, wallTexture, NULL, &tileRect);
+                } else {
+                    SDL_SetRenderDrawColor(renderer, 100, 100, 100, 255);
+                    SDL_RenderFillRect(renderer, &tileRect);
+                }
+                    
+    
+            } else {
                 SDL_SetRenderDrawColor(renderer, 20, 150, 20, 255); // sol
-            SDL_RenderFillRect(renderer, &tileRect);
+                SDL_RenderFillRect(renderer, &tileRect);
+            }
+        
+
         }
     }
 
@@ -280,13 +309,7 @@ void renderMap(SDL_Renderer* renderer) {
     }
 
 
-    for (int i = 0; i < boxCount; i++) {
-        if (boxes[i].active) {
-            SDL_Rect rect = { boxes[i].x, boxes[i].y, TILE_SIZE, TILE_SIZE };
-            SDL_SetRenderDrawColor(renderer, 160, 82, 45, 255); // marron
-            SDL_RenderFillRect(renderer, &rect);
-        }
-    }
+    renderBoxes(renderer);
 
     for (int i = 0; i < switchCount; i++) {
         if (switches[i].active) {
@@ -551,6 +574,26 @@ int main() {
 
     loadMapFromWorld(currentMapX, currentMapY);
 
+
+    SDL_Surface* tempSurface;
+
+    tempSurface = IMG_Load("assets/box.png");
+    if (!tempSurface) {
+        SDL_Log("Erreur chargement box.png : %s", IMG_GetError());
+    } else {
+        boxTexture = SDL_CreateTextureFromSurface(renderer, tempSurface);
+        SDL_FreeSurface(tempSurface);
+    }
+    
+    tempSurface = IMG_Load("assets/wall.png");
+    if (!tempSurface) {
+        SDL_Log("Erreur chargement wall.png : %s", IMG_GetError());
+    } else {
+        wallTexture = SDL_CreateTextureFromSurface(renderer, tempSurface);
+        SDL_FreeSurface(tempSurface);
+    }
+
+
     Player player;
 
     SDL_Surface* surface = IMG_Load("assets/player_without_sword.png");
@@ -650,6 +693,10 @@ int main() {
         SDL_RenderPresent(renderer);
         SDL_Delay(16);
     }
+
+    if (boxTexture) SDL_DestroyTexture(boxTexture);
+    if (wallTexture) SDL_DestroyTexture(wallTexture);
+    
 
     TTF_CloseFont(font);
 
