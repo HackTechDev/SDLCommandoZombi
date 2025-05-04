@@ -15,10 +15,10 @@
 #define ANIM_SPEED 8  
 
 typedef enum {
-    DIR_DOWN = 0,
-    DIR_LEFT = 3,
-    DIR_RIGHT = 1,
-    DIR_UP = 2
+    DIR_UP = 0,
+    DIR_LEFT = 1,
+    DIR_DOWN = 2,
+    DIR_RIGHT = 3,
 } Direction;
 
 typedef struct {
@@ -265,7 +265,7 @@ void handleKeyPress(SDL_KeyboardEvent* key, Player* player, bool* running) {
 void renderPlayer(SDL_Renderer* renderer, Player* player) {
     SDL_Rect src = {
         player->frame * FRAME_WIDTH,
-        (10 + player->dir) * FRAME_HEIGHT,
+        (8 + player->dir) * FRAME_HEIGHT,
         FRAME_WIDTH,
         FRAME_HEIGHT
     };
