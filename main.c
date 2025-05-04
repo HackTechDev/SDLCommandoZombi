@@ -119,6 +119,8 @@ SDL_Texture* switchOffTexture = NULL;
 SDL_Texture* switchOnTexture = NULL;
 SDL_Texture* doorTexture = NULL;
 
+SDL_Texture* menuBackground = NULL;
+
 void loadMapFromWorld(int x, int y) {
     if (x < 0 || x >= WORLD_WIDTH || y < 0 || y >= WORLD_HEIGHT)
         return;
@@ -558,16 +560,6 @@ void renderText(SDL_Renderer* renderer, TTF_Font* font, const char* text, int x,
 }
 
 
-void renderMenu(SDL_Renderer* renderer, TTF_Font* font) {
-    SDL_Color white = {255, 255, 255, 255};
-    SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
-    SDL_RenderClear(renderer);
-
-    renderText(renderer, font, "Appuyez sur ENTREE pour JOUER", 80, 200, white);
-    renderText(renderer, font, "Appuyez sur ECHAP pour QUITTER", 80, 260, white);
-}
-
-
 void activateSwitch(Player* player) {
     SDL_Log("Activate Swich");
 
@@ -589,9 +581,23 @@ void activateSwitch(Player* player) {
             }
         }
     }
-
-    
 }
+
+
+void renderMenu(SDL_Renderer* renderer, TTF_Font* font) {
+    SDL_Color white = {255, 255, 255, 255};
+    SDL_RenderClear(renderer);
+
+    if (menuBackground) {
+        SDL_Rect dest = { 0, 0, SCREEN_WIDTH, SCREEN_HEIGHT };
+        SDL_RenderCopy(renderer, menuBackground, NULL, &dest);
+    }
+
+    // Ensuite, afficher les textes "Jouer", "Quitter", etc.
+    renderText(renderer, font, "MISSION", 80, 200, white);
+    renderText(renderer, font, "QUITTER", 80, 260, white);
+}
+
 
 int main() {
     SDL_Init(SDL_INIT_VIDEO);
@@ -652,6 +658,15 @@ int main() {
     } else {
         switchOnTexture = SDL_CreateTextureFromSurface(renderer, tempSurface);
         SDL_FreeSurface(tempSurface);
+    }
+
+
+    SDL_Surface* menu_background = IMG_Load("assets/menu_background.png");
+    if (!menu_background) {
+        SDL_Log("Erreur chargement fond menu : %s", IMG_GetError());
+    } else {
+        menuBackground = SDL_CreateTextureFromSurface(renderer, menu_background);
+        SDL_FreeSurface(menu_background);
     }
 
 
@@ -760,6 +775,10 @@ int main() {
     
 
     TTF_CloseFont(font);
+
+    if (menuBackground) {
+        SDL_DestroyTexture(menuBackground);
+    }
 
     SDL_DestroyRenderer(renderer);
     SDL_DestroyWindow(window);
