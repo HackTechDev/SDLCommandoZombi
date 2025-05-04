@@ -472,7 +472,11 @@ int main() {
                 }
             } else if (gameState == STATE_GAME) {
                 if (event.type == SDL_KEYDOWN && !event.key.repeat) {
-                    handleKeyPress(&event.key, &player, &running);
+                    if (event.key.keysym.sym == SDLK_ESCAPE) {
+                        gameState = STATE_MENU;  // Retour au menu au lieu de quitter
+                    } else {
+                        handleKeyPress(&event.key, &player, &running);
+                    }
                 }
             }
         }
