@@ -115,7 +115,8 @@ int switchCount = 0;
 SDL_Texture* boxTexture = NULL;
 SDL_Texture* wallTexture = NULL;
 SDL_Texture* groundTexture = NULL;
-SDL_Texture* switchTexture = NULL;
+SDL_Texture* switchOffTexture = NULL;
+SDL_Texture* switchOnTexture = NULL;
 SDL_Texture* doorTexture = NULL;
 
 void loadMapFromWorld(int x, int y) {
@@ -304,25 +305,29 @@ void renderDoors(SDL_Renderer* renderer) {
 
 
 void  renderSwitchs(SDL_Renderer* renderer) {
-
- for (int i = 0; i < switchCount; i++) {
+    for (int i = 0; i < switchCount; i++) {
         if (switches[i].active) {
             SDL_Rect rect = { switches[i].x, switches[i].y, TILE_SIZE, TILE_SIZE };
             if (switches[i].triggered) {
-                SDL_SetRenderDrawColor(renderer, 0, 255, 0, 255); // vert = activé
-                SDL_RenderFillRect(renderer, &rect);
+
+                if (switchOnTexture) {
+                    SDL_RenderCopy(renderer, switchOnTexture, NULL, &rect);
+                } else {
+                    SDL_SetRenderDrawColor(renderer, 0, 255, 0, 255); // vert = activé
+                    SDL_RenderFillRect(renderer, &rect);
+                }
+
             } else {
 
-                if (boxTexture) {
-                    SDL_RenderCopy(renderer, switchTexture, NULL, &rect);
+                if (switchOffTexture) {
+                    SDL_RenderCopy(renderer, switchOffTexture, NULL, &rect);
                 } else {
                     SDL_SetRenderDrawColor(renderer, 255, 0, 0, 255); // rouge = inactif
+                    SDL_RenderFillRect(renderer, &rect);
                 }
             }
-            
         }
     }
-
 }
 
 
@@ -633,11 +638,19 @@ int main() {
         SDL_FreeSurface(tempSurface);
     }
 
-    tempSurface = IMG_Load("assets/switch.png");
+    tempSurface = IMG_Load("assets/switchOff.png");
     if (!tempSurface) {
-        SDL_Log("Erreur chargement switch.png : %s", IMG_GetError());
+        SDL_Log("Erreur chargement switchOff.png : %s", IMG_GetError());
     } else {
-        switchTexture = SDL_CreateTextureFromSurface(renderer, tempSurface);
+        switchOffTexture = SDL_CreateTextureFromSurface(renderer, tempSurface);
+        SDL_FreeSurface(tempSurface);
+    }
+
+    tempSurface = IMG_Load("assets/switchOn.png");
+    if (!tempSurface) {
+        SDL_Log("Erreur chargement switchOn.png : %s", IMG_GetError());
+    } else {
+        switchOnTexture = SDL_CreateTextureFromSurface(renderer, tempSurface);
         SDL_FreeSurface(tempSurface);
     }
 
