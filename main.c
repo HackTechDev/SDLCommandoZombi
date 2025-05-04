@@ -1,6 +1,7 @@
 #include <SDL2/SDL.h>
 #include <stdbool.h>
 #include <SDL2/SDL_image.h>
+#include <SDL2/SDL_ttf.h>
 
 bool loadMap(const char* filename);
 
@@ -80,6 +81,16 @@ int map[MAP_HEIGHT][MAP_WIDTH];
 
 int playerStartX = -1;
 int playerStartY = -1;
+
+
+
+typedef enum {
+    STATE_MENU,
+    STATE_GAME,
+    STATE_QUIT
+} GameState;
+
+
 
 
 void loadMapFromWorld(int x, int y) {
@@ -372,13 +383,34 @@ void initWorld() {
     world[2][1] = (MapInfo){ "map_2_1.txt", true };
 }
 
+void renderText(SDL_Renderer* renderer, TTF_Font* font, const char* text, int x, int y, SDL_Color color) {
+    SDL_Surface* surface = TTF_RenderText_Solid(font, text, color);
+    if (!surface) return;
+
+    SDL_Texture* texture = SDL_CreateTextureFromSurface(renderer, surface);
+    SDL_Rect dest = { x, y, surface->w, surface->h };
+    SDL_RenderCopy(renderer, texture, NULL, &dest);
+
+    SDL_FreeSurface(surface);
+    SDL_DestroyTexture(texture);
+}
+
+
+void renderMenu(SDL_Renderer* renderer, TTF_Font* font) {
+    SDL_Color white = {255, 255, 255, 255};
+    SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
+    SDL_RenderClear(renderer);
+
+    renderText(renderer, font, "Appuyez sur ENTREE pour JOUER", 80, 200, white);
+    renderText(renderer, font, "Appuyez sur ECHAP pour QUITTER", 80, 260, white);
+}
+
+
 int main() {
     SDL_Init(SDL_INIT_VIDEO);
-    SDL_Window* window = SDL_CreateWindow("Zelda-Like", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED,
+    SDL_Window* window = SDL_CreateWindow("SDLCommandoZombi", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED,
                                           SCREEN_WIDTH, SCREEN_HEIGHT, SDL_WINDOW_SHOWN);
     SDL_Renderer* renderer = SDL_CreateRenderer(window, -1, SDL_RENDERER_ACCELERATED);
-
-
 
     initWorld();
 
@@ -407,53 +439,82 @@ int main() {
 
 
     bool running = true;
-    SDL_Event event;
+   
+    GameState gameState = STATE_MENU;
+
+    if (TTF_Init() == -1) {
+        SDL_Log("Erreur initialisation SDL_ttf: %s", TTF_GetError());
+        return 1;
+    }
+
+
+    TTF_Font* font = TTF_OpenFont("assets/font.ttf", 28);
+    if (!font) {
+        SDL_Log("Erreur chargement police: %s", TTF_GetError());
+        return 1;
+    }
 
     while (running) {
+        SDL_Event event;
+    
         while (SDL_PollEvent(&event)) {
             if (event.type == SDL_QUIT) {
                 running = false;
-            } else if (event.type == SDL_KEYDOWN && !event.key.repeat) {
-                handleKeyPress(&event.key, &player, &running);
             }
-        }
-
-        
-
-        SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
-        SDL_RenderClear(renderer);
-
-        renderMap(renderer);
-        renderPlayer(renderer, &player);
-
-        for (int i = 0; i < keyCount; i++) {
-            if (!keys[i].collected &&
-                checkCollision(player.x, player.y, TILE_SIZE, TILE_SIZE,
-                               keys[i].x, keys[i].y, TILE_SIZE, TILE_SIZE)) {
-                
-                keys[i].collected = true;
-
-                keysCollected++;
-                SDL_Log("Clé ramassée ! (%d/%d)", keysCollected, keyCount);
-
-
-                int doorToOpen = keys[i].doorIndex;
-        
-                if (doorToOpen >= 0 && doorToOpen < doorCount) {
-                    doors[doorToOpen].open = true;
-                    SDL_Log("Porte %d ouverte par clé %d !", doorToOpen, i);
+    
+            if (gameState == STATE_MENU) {
+                if (event.type == SDL_KEYDOWN && !event.key.repeat) {
+                    if (event.key.keysym.sym == SDLK_RETURN) {
+                        gameState = STATE_GAME;
+                    } else if (event.key.keysym.sym == SDLK_ESCAPE) {
+                        gameState = STATE_QUIT;
+                    }
+                }
+            } else if (gameState == STATE_GAME) {
+                if (event.type == SDL_KEYDOWN && !event.key.repeat) {
+                    handleKeyPress(&event.key, &player, &running);
                 }
             }
         }
-
-
-
+    
+        SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
+        SDL_RenderClear(renderer);
+    
+        if (gameState == STATE_MENU) {
+            renderMenu(renderer, font);
+        } else if (gameState == STATE_GAME) {
+            renderMap(renderer);
+            renderPlayer(renderer, &player);
+    
+            for (int i = 0; i < keyCount; i++) {
+                if (!keys[i].collected &&
+                    checkCollision(player.x, player.y, TILE_SIZE, TILE_SIZE,
+                                   keys[i].x, keys[i].y, TILE_SIZE, TILE_SIZE)) {
+                    
+                    keys[i].collected = true;
+                    keysCollected++;
+                    SDL_Log("Clé ramassée ! (%d/%d)", keysCollected, keyCount);
+    
+                    int doorToOpen = keys[i].doorIndex;
+                    if (doorToOpen >= 0 && doorToOpen < doorCount) {
+                        doors[doorToOpen].open = true;
+                        SDL_Log("Porte %d ouverte par clé %d !", doorToOpen, i);
+                    }
+                }
+            }
+        } else if (gameState == STATE_QUIT) {
+            running = false;
+        }
+    
         SDL_RenderPresent(renderer);
-        SDL_Delay(16); // ~60 FPS
+        SDL_Delay(16);
     }
+
+    TTF_CloseFont(font);
 
     SDL_DestroyRenderer(renderer);
     SDL_DestroyWindow(window);
+    TTF_Quit();
     SDL_Quit();
     return 0;
 }
