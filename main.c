@@ -76,6 +76,16 @@ int doorCount = 0;
 
 int keysCollected = 0;
 
+typedef struct {
+    int x, y;
+    bool active;
+} Box;
+
+#define MAX_BOXES 10
+Box boxes[MAX_BOXES];
+int boxCount = 0;
+
+
 // 0 = sol, 1 = mur
 int map[MAP_HEIGHT][MAP_WIDTH];
 
@@ -163,6 +173,13 @@ bool loadMap(const char* filename) {
                         doors[doorCount++] = (Door){ x * TILE_SIZE, y * TILE_SIZE, false };
                     }
                     break;
+                case 'C':
+                    map[y][x] = 0;
+                    if (boxCount < MAX_BOXES) {
+                        boxes[boxCount++] = (Box){ x * TILE_SIZE, y * TILE_SIZE, true };
+                        boxCount++;
+                    }
+                    break;    
                 default:
                     SDL_Log("Caractère inconnu '%c' à (%d, %d)", line[x], y, x);
                     map[y][x] = 0;
@@ -231,6 +248,16 @@ void renderMap(SDL_Renderer* renderer) {
             SDL_RenderFillRect(renderer, &r);
         }
     }
+
+
+    for (int i = 0; i < boxCount; i++) {
+        if (boxes[i].active) {
+            SDL_Rect rect = { boxes[i].x, boxes[i].y, TILE_SIZE, TILE_SIZE };
+            SDL_SetRenderDrawColor(renderer, 160, 82, 45, 255); // marron
+            SDL_RenderFillRect(renderer, &rect);
+        }
+    }
+    
 }
 
 
@@ -248,6 +275,43 @@ void movePlayer(Player* player, int dx, int dy) {
         }
     }
 
+    // Vérifie s’il y a une caisse
+    for (int i = 0; i < boxCount; i++) {
+        if (boxes[i].active &&
+            checkCollision(newX, newY, TILE_SIZE, TILE_SIZE,
+                        boxes[i].x, boxes[i].y, TILE_SIZE, TILE_SIZE)) {
+
+            // Coordonnées de destination de la caisse
+            int boxNewX = boxes[i].x + dx;
+            int boxNewY = boxes[i].y + dy;
+
+            // Vérifie si la caisse peut être poussée (pas de mur ni autre caisse)
+            if (!isCollision(boxNewX, boxNewY, TILE_SIZE)) {
+                bool boxBlocked = false;
+
+                for (int j = 0; j < boxCount; j++) {
+                    if (i != j && boxes[j].active &&
+                        checkCollision(boxNewX, boxNewY, TILE_SIZE, TILE_SIZE,
+                                    boxes[j].x, boxes[j].y, TILE_SIZE, TILE_SIZE)) {
+                        boxBlocked = true;
+                        break;
+                    }
+                }
+
+                if (!boxBlocked) {
+                    // Déplace la caisse et le joueur
+                    boxes[i].x = boxNewX;
+                    boxes[i].y = boxNewY;
+                    player->x = newX;
+                    player->y = newY;
+                    return;
+                }
+            }
+
+            // Sinon, blocage : le joueur ne bouge pas
+            return;
+        }
+    }
 
 
     // Détection de direction
