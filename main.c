@@ -594,8 +594,8 @@ void renderMenu(SDL_Renderer* renderer, TTF_Font* font) {
     }
 
     // Ensuite, afficher les textes "Jouer", "Quitter", etc.
-    renderText(renderer, font, "MISSION", 80, 200, white);
-    renderText(renderer, font, "QUITTER", 80, 260, white);
+    renderText(renderer, font, "MISSION", 80, 300, white);
+    renderText(renderer, font, "QUITTER", 80, 360, white);
 }
 
 
