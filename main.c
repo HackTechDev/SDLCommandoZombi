@@ -258,11 +258,9 @@ void renderBoxes(SDL_Renderer* renderer) {
     }
 }
 
-void renderMap(SDL_Renderer* renderer) {
+void renderWalls(SDL_Renderer* renderer) {
     for (int y = 0; y < MAP_HEIGHT; y++) {
         for (int x = 0; x < MAP_WIDTH; x++) {
-            
-            
             SDL_Rect tileRect = {x * TILE_SIZE, y * TILE_SIZE, TILE_SIZE, TILE_SIZE};
             
             if (map[y][x] == 1) {
@@ -278,10 +276,14 @@ void renderMap(SDL_Renderer* renderer) {
                 SDL_SetRenderDrawColor(renderer, 20, 150, 20, 255); // sol
                 SDL_RenderFillRect(renderer, &tileRect);
             }
-        
-
         }
     }
+}
+
+void renderMap(SDL_Renderer* renderer) {
+    
+    renderWalls(renderer);
+        
 
     // Ennemis : rouge
     for (int i = 0; i < enemyCount; i++) {
