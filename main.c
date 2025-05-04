@@ -1,5 +1,6 @@
 #include <SDL2/SDL.h>
 #include <stdbool.h>
+#include <SDL2/SDL_image.h>
 
 #define SCREEN_WIDTH 800
 #define SCREEN_HEIGHT 576
@@ -8,9 +9,25 @@
 #define MAP_HEIGHT (SCREEN_HEIGHT / TILE_SIZE)
 #define PLAYER_SPEED 4
 
+#define FRAME_WIDTH 32
+#define FRAME_HEIGHT 32
+#define FRAME_COUNT 9
+#define ANIM_SPEED 8  
+
+typedef enum {
+    DIR_DOWN = 0,
+    DIR_LEFT = 3,
+    DIR_RIGHT = 1,
+    DIR_UP = 2
+} Direction;
+
 typedef struct {
     int x, y;
-    SDL_Rect rect;
+    int frame;            // 0 → 8
+    int frameTimer;
+    Direction dir;        // Direction actuelle
+    SDL_Texture* texture; // Sprite sheet
+
 } Player;
 
 #define MAX_ENTITIES 64
@@ -186,6 +203,15 @@ void movePlayer(Player* player, int dx, int dy) {
         }
     }
 
+
+
+    // Détection de direction
+    if (dy < 0) player->dir = DIR_UP;
+    else if (dy > 0) player->dir = DIR_DOWN;
+    else if (dx < 0) player->dir = DIR_LEFT;
+    else if (dx > 0) player->dir = DIR_RIGHT;
+
+
     // Déplacement horizontal
     if (!isCollision(newX, player->y, TILE_SIZE)) {
         player->x = newX;
@@ -195,32 +221,63 @@ void movePlayer(Player* player, int dx, int dy) {
     if (!isCollision(player->x, newY, TILE_SIZE)) {
         player->y = newY;
     }
+
+      // Animation
+      if (dx != 0 || dy != 0) {
+        player->frameTimer++;
+        if (player->frameTimer >= ANIM_SPEED) {
+            player->frame = (player->frame + 1) % FRAME_COUNT;
+            player->frameTimer = 0;
+        }
+    } else {
+        player->frame = 0; // frame fixe si inactif
+    }
 }
 
-void handleInput(bool* running, const Uint8* keystate, Player* player) {
-    if (keystate[SDL_SCANCODE_ESCAPE])
-        *running = false;
+void handleKeyPress(SDL_KeyboardEvent* key, Player* player, bool* running) {
+    int dx = 0, dy = 0;
 
-    int dx = 0;
-    int dy = 0;
+    switch (key->keysym.scancode) {
+        case SDL_SCANCODE_ESCAPE:
+            *running = false;
+            break;
+        case SDL_SCANCODE_UP:
+            dy = -PLAYER_SPEED;
+            break;
+        case SDL_SCANCODE_DOWN:
+            dy = PLAYER_SPEED;
+            break;
+        case SDL_SCANCODE_LEFT:
+            dx = -PLAYER_SPEED;
+            break;
+        case SDL_SCANCODE_RIGHT:
+            dx = PLAYER_SPEED;
+            break;
+        default:
+            break;
+    }
 
-    if (keystate[SDL_SCANCODE_UP])    dy -= PLAYER_SPEED;
-    if (keystate[SDL_SCANCODE_DOWN])  dy += PLAYER_SPEED;
-    if (keystate[SDL_SCANCODE_LEFT])  dx -= PLAYER_SPEED;
-    if (keystate[SDL_SCANCODE_RIGHT]) dx += PLAYER_SPEED;
-
-    
-    movePlayer(player, dx, dy);
+    if (dx != 0 || dy != 0) {
+        movePlayer(player, dx, dy);
+    }
 }
 
 void renderPlayer(SDL_Renderer* renderer, Player* player) {
-    player->rect.x = player->x;
-    player->rect.y = player->y;
-    player->rect.w = TILE_SIZE;
-    player->rect.h = TILE_SIZE;
+    SDL_Rect src = {
+        player->frame * FRAME_WIDTH,
+        (10 + player->dir) * FRAME_HEIGHT,
+        FRAME_WIDTH,
+        FRAME_HEIGHT
+    };
+    SDL_Rect dst = {
+        player->x,
+        player->y,
+        FRAME_WIDTH,
+        FRAME_HEIGHT
+    };
 
-    SDL_SetRenderDrawColor(renderer, 255, 255, 0, 255); // joueur jaune
-    SDL_RenderFillRect(renderer, &player->rect);
+    printf("Render frame %d at src.x=%d src.y=%d\n", player->frame, src.x, src.y);
+    SDL_RenderCopy(renderer, player->texture, &src, &dst);
 }
 
 int main() {
@@ -234,7 +291,19 @@ int main() {
         return 1;
     }
 
+
+
+
     Player player;
+
+    SDL_Surface* surface = IMG_Load("assets/player_without_sword.png");
+    if (!surface) {
+        SDL_Log("Erreur de chargement joueur : %s", IMG_GetError());
+    }
+    player.texture = SDL_CreateTextureFromSurface(renderer, surface);
+    SDL_FreeSurface(surface);
+
+
     if (playerStartX == -1 || playerStartY == -1) {
         SDL_Log("Position du joueur non définie dans la carte !");
         SDL_Quit();
@@ -242,16 +311,24 @@ int main() {
     }
     player.x = playerStartX * TILE_SIZE;
     player.y = playerStartY * TILE_SIZE;
+    player.frame = 0;       // frame 1 (index 0)
+    player.dir = DIR_DOWN;  // direction vers le bas
+    player.frameTimer = 0;
+
 
     bool running = true;
     SDL_Event event;
 
     while (running) {
-        while (SDL_PollEvent(&event))
-            if (event.type == SDL_QUIT) running = false;
+        while (SDL_PollEvent(&event)) {
+            if (event.type == SDL_QUIT) {
+                running = false;
+            } else if (event.type == SDL_KEYDOWN && !event.key.repeat) {
+                handleKeyPress(&event.key, &player, &running);
+            }
+        }
 
-        const Uint8* keystate = SDL_GetKeyboardState(NULL);
-        handleInput(&running, keystate, &player);
+        
 
         SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
         SDL_RenderClear(renderer);
