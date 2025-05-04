@@ -101,6 +101,16 @@ typedef enum {
 } GameState;
 
 
+typedef struct {
+    int x, y;
+    bool active;        // l'interrupteur existe dans la carte
+    bool triggered;     // est-ce qu'une caisse est dessus ?
+    int linkedDoor;     // -1 si aucun lien, sinon index de la porte à ouvrir
+} Switch;
+
+#define MAX_SWITCHES 10
+Switch switches[MAX_SWITCHES];
+int switchCount = 0;
 
 
 void loadMapFromWorld(int x, int y) {
@@ -177,9 +187,20 @@ bool loadMap(const char* filename) {
                     map[y][x] = 0;
                     if (boxCount < MAX_BOXES) {
                         boxes[boxCount++] = (Box){ x * TILE_SIZE, y * TILE_SIZE, true };
-                        boxCount++;
                     }
-                    break;    
+                    break; 
+                    
+                case 'S':    
+                    if (switchCount < MAX_SWITCHES) {
+                        switches[switchCount++] = (Switch){
+                            .x = x * TILE_SIZE,
+                            .y = y * TILE_SIZE,
+                            .active = true,
+                            .triggered = false,
+                            .linkedDoor = -1 // tu peux lier plus tard
+                        };
+                    }
+                    break;
                 default:
                     SDL_Log("Caractère inconnu '%c' à (%d, %d)", line[x], y, x);
                     map[y][x] = 0;
@@ -188,6 +209,15 @@ bool loadMap(const char* filename) {
         }
     }
     fclose(file);
+
+
+
+    // Liaison manuelle : interrupteur 0 ouvre porte 0
+    if (switchCount > 0 && doorCount > 0) {
+          SDL_Log("Set Switch to door");
+        switches[0].linkedDoor = 0;
+    }
+
     return true;
 }
 
@@ -254,6 +284,17 @@ void renderMap(SDL_Renderer* renderer) {
         if (boxes[i].active) {
             SDL_Rect rect = { boxes[i].x, boxes[i].y, TILE_SIZE, TILE_SIZE };
             SDL_SetRenderDrawColor(renderer, 160, 82, 45, 255); // marron
+            SDL_RenderFillRect(renderer, &rect);
+        }
+    }
+
+    for (int i = 0; i < switchCount; i++) {
+        if (switches[i].active) {
+            SDL_Rect rect = { switches[i].x, switches[i].y, TILE_SIZE, TILE_SIZE };
+            if (switches[i].triggered)
+                SDL_SetRenderDrawColor(renderer, 0, 255, 0, 255); // vert = activé
+            else
+                SDL_SetRenderDrawColor(renderer, 255, 0, 0, 255); // rouge = inactif
             SDL_RenderFillRect(renderer, &rect);
         }
     }
@@ -379,7 +420,7 @@ void movePlayer(Player* player, int dx, int dy) {
     }
 
       // Animation
-      if (dx != 0 || dy != 0) {
+    if (dx != 0 || dy != 0) {
         player->frameTimer++;
         if (player->frameTimer >= ANIM_SPEED) {
             player->frame = (player->frame + 1) % FRAME_COUNT;
@@ -388,6 +429,29 @@ void movePlayer(Player* player, int dx, int dy) {
     } else {
         player->frame = 0; // frame fixe si inactif
     }
+
+
+
+    for (int i = 0; i < switchCount; i++) {
+        switches[i].triggered = false;
+    
+        for (int j = 0; j < boxCount; j++) {
+            SDL_Log("i: %d, j: %d, %s", i, j, (boxes[j].active ? "true" : "false"));
+            SDL_Log("box: %d, %d, %d / switch: %d, %d, %d", j, boxes[j].x, boxes[j].y, i, switches[i].x, switches[i].y);
+            if (boxes[j].active && checkCollision(boxes[j].x, boxes[j].y, TILE_SIZE, TILE_SIZE, switches[i].x, switches[i].y, TILE_SIZE, TILE_SIZE)) {
+                SDL_Log("switch triggered");
+                switches[i].triggered = true;
+    
+                // Si lié à une porte, l'ouvrir
+                if (switches[i].linkedDoor >= 0 && switches[i].linkedDoor < doorCount) {
+                    doors[switches[i].linkedDoor].open = true;
+                }
+            }
+        }
+    }
+
+
+
 }
 
 void handleKeyPress(SDL_KeyboardEvent* key, Player* player, bool* running) {
