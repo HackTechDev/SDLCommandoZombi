@@ -595,30 +595,14 @@ void renderTextCentered(SDL_Renderer* renderer, TTF_Font* font, const char* text
     SDL_DestroyTexture(texture);
 }
 
-/*
-void renderMenu(SDL_Renderer* renderer, TTF_Font* font) {
-    SDL_Color white = {255, 255, 255, 255};
-    SDL_RenderClear(renderer);
 
-    if (menuBackground) {
-        SDL_Rect dest = { 0, 0, SCREEN_WIDTH, SCREEN_HEIGHT };
-        SDL_RenderCopy(renderer, menuBackground, NULL, &dest);
-    }
-
-    // Ensuite, afficher les textes "Jouer", "Quitter", etc.
-    renderText(renderer, font, "MISSION", 80, 300, white);
-    renderText(renderer, font, "QUITTER", 80, 360, white);
-}
-*/
-
-void renderMenu(SDL_Renderer* renderer, TTF_Font* font, SDL_Texture* menuBackground, SDL_Texture* cursorTexture, int selected) {
+void renderMenu(SDL_Renderer* renderer, TTF_Font* font, SDL_Texture* background, SDL_Texture* cursorTexture, int* hoveredIndex) {
     SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
     SDL_RenderClear(renderer);
 
-    // Affichage du fond
-    if (menuBackground) {
-        SDL_Rect dest = { 0, 0, SCREEN_WIDTH, SCREEN_HEIGHT };
-        SDL_RenderCopy(renderer, menuBackground, NULL, &dest);
+    if (background) {
+        SDL_Rect bgRect = { 0, 0, SCREEN_WIDTH, SCREEN_HEIGHT };
+        SDL_RenderCopy(renderer, background, NULL, &bgRect);
     }
 
     const char* menuItems[] = { "MISSION", "QUITTER" };
@@ -626,19 +610,47 @@ void renderMenu(SDL_Renderer* renderer, TTF_Font* font, SDL_Texture* menuBackgro
     int menuY = 250;
     int lineSpacing = 60;
 
-    for (int i = 0; i < 2; i++) {
-        // Affiche le texte centré
-        renderTextCentered(renderer, font, menuItems[i], menuX, menuY + i * lineSpacing, selected == i);
+    int mouseX, mouseY;
+    SDL_GetMouseState(&mouseX, &mouseY);
+    *hoveredIndex = -1;
 
-        // Affiche le curseur si sélectionné
-        if (selected == i && cursorTexture) {
-            SDL_Rect cursorRect = {
-                menuX - 120,                     // Position gauche du curseur
-                menuY + i * lineSpacing - 10,   // Aligné verticalement au texte
-                32, 32
-            };
+    for (int i = 0; i < 2; i++) {
+        SDL_Color color = {255, 255, 255, 255}; // blanc par défaut
+
+        // Création surface et détection hover
+        SDL_Surface* surface = TTF_RenderUTF8_Blended(font, menuItems[i], color);
+        SDL_Texture* texture = SDL_CreateTextureFromSurface(renderer, surface);
+
+        SDL_Rect textRect = {
+            menuX - surface->w / 2,
+            menuY + i * lineSpacing,
+            surface->w,
+            surface->h
+        };
+
+        // Hover detection
+        if (mouseX >= textRect.x && mouseX <= textRect.x + textRect.w &&
+            mouseY >= textRect.y && mouseY <= textRect.y + textRect.h) {
+            color = (SDL_Color){255, 255, 0, 255}; // Jaune si survolé
+            *hoveredIndex = i;
+        }
+
+        // Recréer texture avec la bonne couleur si survol
+        SDL_FreeSurface(surface);
+        surface = TTF_RenderUTF8_Blended(font, menuItems[i], color);
+        SDL_DestroyTexture(texture);
+        texture = SDL_CreateTextureFromSurface(renderer, surface);
+
+        SDL_RenderCopy(renderer, texture, NULL, &textRect);
+
+        // Curseur graphique facultatif
+        if (*hoveredIndex == i && cursorTexture) {
+            SDL_Rect cursorRect = { menuX - 120, textRect.y, 32, 32 };
             SDL_RenderCopy(renderer, cursorTexture, NULL, &cursorRect);
         }
+
+        SDL_FreeSurface(surface);
+        SDL_DestroyTexture(texture);
     }
 
     SDL_RenderPresent(renderer);
@@ -762,7 +774,9 @@ int main() {
         SDL_Log("Erreur chargement police: %s", TTF_GetError());
         return 1;
     }
-    int selected = 0; 
+
+    int selected = -1;
+    int hovered = -1;
     
     while (running) {
         SDL_Event event;
@@ -775,10 +789,14 @@ int main() {
             if (gameState == STATE_MENU) {
                 if (event.type == SDL_KEYDOWN && !event.key.repeat) {
                     if (event.key.keysym.sym == SDLK_RETURN) {
-                        gameState = STATE_GAME;
+                        if (selected == 0) gameState = STATE_GAME;
+                        else if (selected == 1) gameState = STATE_QUIT;
                     } else if (event.key.keysym.sym == SDLK_ESCAPE) {
                         gameState = STATE_QUIT;
                     }
+                } else if (event.type == SDL_MOUSEBUTTONDOWN && event.button.button == SDL_BUTTON_LEFT) {
+                    if (selected == 0) gameState = STATE_GAME;
+                    else if (selected == 1) gameState = STATE_QUIT;
                 }
             } else if (gameState == STATE_GAME) {
                 if (event.type == SDL_KEYDOWN && !event.key.repeat) {
@@ -797,7 +815,7 @@ int main() {
         SDL_RenderClear(renderer);
     
         if (gameState == STATE_MENU) {
-            renderMenu(renderer, font, menuBackground, cursorTexture, selected);
+            renderMenu(renderer, font, menuBackground, cursorTexture, &selected);
         } else if (gameState == STATE_GAME) {
             renderMap(renderer);
             renderPlayer(renderer, &player);
