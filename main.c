@@ -584,6 +584,18 @@ void activateSwitch(Player* player) {
 }
 
 
+void renderTextCentered(SDL_Renderer* renderer, TTF_Font* font, const char* text, int x, int y, bool selected) {
+    SDL_Color color = selected ? (SDL_Color){255, 255, 0, 255} : (SDL_Color){255, 255, 255, 255};
+
+    SDL_Surface* surface = TTF_RenderUTF8_Blended(font, text, color);
+    SDL_Texture* texture = SDL_CreateTextureFromSurface(renderer, surface);
+    SDL_Rect dst = { x - surface->w / 2, y, surface->w, surface->h };
+    SDL_RenderCopy(renderer, texture, NULL, &dst);
+    SDL_FreeSurface(surface);
+    SDL_DestroyTexture(texture);
+}
+
+/*
 void renderMenu(SDL_Renderer* renderer, TTF_Font* font) {
     SDL_Color white = {255, 255, 255, 255};
     SDL_RenderClear(renderer);
@@ -597,7 +609,40 @@ void renderMenu(SDL_Renderer* renderer, TTF_Font* font) {
     renderText(renderer, font, "MISSION", 80, 300, white);
     renderText(renderer, font, "QUITTER", 80, 360, white);
 }
+*/
 
+void renderMenu(SDL_Renderer* renderer, TTF_Font* font, SDL_Texture* menuBackground, SDL_Texture* cursorTexture, int selected) {
+    SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
+    SDL_RenderClear(renderer);
+
+    // Affichage du fond
+    if (menuBackground) {
+        SDL_Rect dest = { 0, 0, SCREEN_WIDTH, SCREEN_HEIGHT };
+        SDL_RenderCopy(renderer, menuBackground, NULL, &dest);
+    }
+
+    const char* menuItems[] = { "MISSION", "QUITTER" };
+    int menuX = SCREEN_WIDTH / 2;
+    int menuY = 250;
+    int lineSpacing = 60;
+
+    for (int i = 0; i < 2; i++) {
+        // Affiche le texte centré
+        renderTextCentered(renderer, font, menuItems[i], menuX, menuY + i * lineSpacing, selected == i);
+
+        // Affiche le curseur si sélectionné
+        if (selected == i && cursorTexture) {
+            SDL_Rect cursorRect = {
+                menuX - 120,                     // Position gauche du curseur
+                menuY + i * lineSpacing - 10,   // Aligné verticalement au texte
+                32, 32
+            };
+            SDL_RenderCopy(renderer, cursorTexture, NULL, &cursorRect);
+        }
+    }
+
+    SDL_RenderPresent(renderer);
+}
 
 int main() {
     SDL_Init(SDL_INIT_VIDEO);
@@ -669,6 +714,16 @@ int main() {
         SDL_FreeSurface(menu_background);
     }
 
+    SDL_Texture* cursorTexture = NULL;
+
+    SDL_Surface* cursor = IMG_Load("assets/cursor.png");
+    if (!cursor) {
+        SDL_Log("Erreur chargement curseur : %s", IMG_GetError());
+    } else {
+        cursorTexture = SDL_CreateTextureFromSurface(renderer, cursor);
+        SDL_FreeSurface(cursor);
+    }
+
 
     Player player;
 
@@ -707,7 +762,8 @@ int main() {
         SDL_Log("Erreur chargement police: %s", TTF_GetError());
         return 1;
     }
-
+    int selected = 0; 
+    
     while (running) {
         SDL_Event event;
     
@@ -741,7 +797,7 @@ int main() {
         SDL_RenderClear(renderer);
     
         if (gameState == STATE_MENU) {
-            renderMenu(renderer, font);
+            renderMenu(renderer, font, menuBackground, cursorTexture, selected);
         } else if (gameState == STATE_GAME) {
             renderMap(renderer);
             renderPlayer(renderer, &player);
