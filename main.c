@@ -161,10 +161,10 @@ bool loadMap(const char* filename) {
 
         for (int x = 0; x < MAP_WIDTH; x++) {
             switch (line[x]) {
-                case '0':
+                case '.':
                     map[y][x] = 0;
                     break;
-                case '1':
+                case '#':
                     map[y][x] = 1;
                     break;
                 case 'P':
