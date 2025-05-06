@@ -540,11 +540,11 @@ void renderPlayer(SDL_Renderer* renderer, Player* player) {
 void initWorld() {
     memset(world, 0, sizeof(world));
 
-    world[1][1] = (MapInfo){ "map_1_1.txt", true };
-    world[1][0] = (MapInfo){ "map_1_0.txt", true };
-    world[1][2] = (MapInfo){ "map_1_2.txt", true };
-    world[0][1] = (MapInfo){ "map_0_1.txt", true };
-    world[2][1] = (MapInfo){ "map_2_1.txt", true };
+    world[1][1] = (MapInfo){ "world/map_1_1.txt", true };
+    world[1][0] = (MapInfo){ "world/map_1_0.txt", true };
+    world[1][2] = (MapInfo){ "world/map_1_2.txt", true };
+    world[0][1] = (MapInfo){ "world/map_0_1.txt", true };
+    world[2][1] = (MapInfo){ "world/map_2_1.txt", true };
 }
 
 void renderText(SDL_Renderer* renderer, TTF_Font* font, const char* text, int x, int y, SDL_Color color) {
